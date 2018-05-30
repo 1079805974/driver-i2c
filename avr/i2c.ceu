@@ -1,0 +1,29 @@
+#include "../i2c.ceu"
+
+output (on/off v) SPI do
+    // Start from here...
+    // it is always ok to see/copy twi.c code as long as all lines from there
+    // are 100% understood
+end
+
+output (u8,byte&&,u8) I2C_REQUEST_SEND do
+    // Then here...
+    // Describe (in english) the steps involved for this requests according to
+    // the protocol rules
+    // In the original driver (or other code from the internet), what is the
+    // first time that we need to check flags with a busy-wait while loop?
+    // How can we avoid that? What is the interrupt and flags that we can use
+    // instead of the busy-wait?
+    // This will make you need the ISR...
+end
+
+spawn/async [???] do
+    // Now the ISR...
+    // Ok, an interrupt occurred.
+    // Is this interrupt related to the request above?
+    // Let's check the appropriate flags to be sure...
+    // Ok, it is, we now need to go one step further on the protocol...
+    // For now, let's put a fail assert to be sure that we are reaching this
+    // point:
+    _ceu_arduino_assert(0, 5);  // blinks 5 times periodically forever
+end
