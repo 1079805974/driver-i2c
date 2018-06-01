@@ -1,0 +1,42 @@
+#include "wclock.ceu"
+native
+    _TWI_vect,
+;
+native/pre do
+    ##include <compat/twi.h>
+    int SLA=4;
+end
+
+spawn async/isr [_TWI_vect] do
+{
+  switch(TW_STATUS){
+    case TW_START:
+      TWDR = (SLA << 1) | TW_READ;
+      TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE);
+      break;
+    
+    case TW_MR_SLA_ACK:
+        ceu_arduino_assert(0,7);
+        break;    
+
+    case TW_MR_SLA_NACK:
+        ceu_arduino_assert(0,5);
+        break;    
+        
+    default:
+      TWCR = (1<<TWINT)|(1<<TWEN)| (1<<TWSTO) | (1<<TWIE);
+  }
+}
+end
+
+{
+  TWBR = ((F_CPU / 100000L) - 16) / 2;
+}
+await 3ms;
+
+loop do
+    {
+        TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN)|(1<<TWIE);
+    }
+    await 300ms;
+end
