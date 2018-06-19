@@ -1,12 +1,17 @@
 #include "wclock.ceu"
+{Serial.begin(9600);}
 #include "i2c.ceu"
-
 emit I2C(on);
 loop do
-    var u8 i;
-    loop i in [0 -> 4] do
-        twi_transmit_buffer = twi_transmit_buffer .. [i];
-    end
+    twi_transmit_buffer = [9,86,97,87,6];
     emit I2C_REQUEST_SEND(4);
     await I2C_REQUEST_DONE;
+    emit I2C_REQUEST_RECEIVE(4,5);
+    await I2C_REQUEST_DONE;
+    var u8 i;
+    loop i in [0->($twi_receive_buffer as u8) - 1] do
+        {Serial.print((char)@twi_receive_buffer[i]);}
+    end
+    {Serial.println("bye");}
+    await 1s;
 end

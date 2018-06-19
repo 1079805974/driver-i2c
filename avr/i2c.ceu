@@ -81,6 +81,7 @@ end
 spawn async/isr [_TWI_vect] do
 
     var bool done = false;
+    var int value = -1;
     {
         switch(TW_STATUS){
             case TW_START:
@@ -113,12 +114,46 @@ spawn async/isr [_TWI_vect] do
                 @done=1;
                 TWCR = (1<<TWINT)|(1<<TWEN)| (1<<TWSTO) | (1<<TWIE) | (1<<TWEA);
                 break;
+            case TW_MR_SLA_ACK:
+                if(RXBuffIndex<RXBuffLen){
+                    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE)|(1<<TWEA);
+                }
+                else{
+                    @done=1;
+                    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE);// send NACK
+                }
+                break;
+            case TW_MR_DATA_ACK:
+                if(RXBuffIndex<RXBuffLen){
+                    @(value) = TWDR;
+                    RXBuffIndex++;
+                    if(RXBuffIndex!=RXBuffLen)
+                        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE)|(1<<TWEA);
+                    else
+                        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE);
+                }
+                else{
+                    @done=1;
+                    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO) | (1<<TWIE);
+                }
+                break;
+            case TW_MR_DATA_NACK:
+            case TW_MR_SLA_NACK:
+
+                @outer.errorcode=2;// in case of slave not connected or receiving NACK from slave or requesting more data from the slave than the amount sent
+                @done=1;
+                TWCR = (1<<TWINT)|(1<<TWEN)| (1<<TWSTO) | (1<<TWIE);
+                break;
             default:
                 @outer.errorcode=3;
                 @done=1;                
                 TWCR = (1<<TWINT)|(1<<TWEN)| (1<<TWSTO) | (1<<TWIE) | (1<<TWEA);//default case sends stop condition
         }
     }
+
+    if value!=-1 then
+        outer.twi_receive_buffer = outer.twi_receive_buffer .. [value as byte];
+    end
     if done then
         if outer.requestmode != -1 then
             if outer.requestmode == 1 then
