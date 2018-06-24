@@ -1,0 +1,10 @@
+#include "wclock.ceu"
+{Serial.begin(9600);}
+#include "i2c.ceu"
+emit I2C(on);
+loop do
+    twi_transmit_buffer = [9,86,97,87,6];
+    emit I2C_REQUEST_SEND(4);
+    await I2C_REQUEST_DONE;
+    await 1s;
+end
