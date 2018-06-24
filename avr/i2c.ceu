@@ -122,7 +122,7 @@ spawn async/isr [_TWI_vect] do
     var bool ack = false;
     var int value = -1;
     {
-        //print_stat(TW_STATUS);
+        print_stat(TW_STATUS);
         switch(TW_STATUS){
             case TW_START:
             case TW_REP_START:
@@ -165,12 +165,20 @@ spawn async/isr [_TWI_vect] do
                 break;
             case TW_MR_DATA_ACK:
                 if(RXBuffIndex<RXBuffLen){
-                    @(value) = TWDR;
-                    RXBuffIndex++;
-                    if(RXBuffIndex!=RXBuffLen)
-                        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE)|(1<<TWEA);
-                    else
-                        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE);
+                    if(TWDR==255){
+                        @done=1;
+                        TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO) | (1<<TWIE);
+                    }
+                    else{
+                        @(value) = TWDR;
+                        RXBuffIndex++;
+                        if(RXBuffIndex!=RXBuffLen)
+                            TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE)|(1<<TWEA);
+                        else{
+                            @done=1;
+                            TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO) | (1<<TWIE);
+                        }
+                    }
                 }
                 else{
                     @done=1;

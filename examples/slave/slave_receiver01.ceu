@@ -1,0 +1,14 @@
+{Serial.begin(9600);}
+#include "i2c.ceu"
+emit I2C_SET_ADDRESS(4);
+emit I2C(on);
+loop do
+    await I2C_REQUEST_ADDRESSED;
+    emit I2C_REQUEST_RECEIVE(0,8);
+    await I2C_REQUEST_DONE;
+    var u8 i;
+    loop i in [1-> $twi_receive_buffer as u8] do
+        {Serial.print(@twi_receive_buffer[i-1]);}
+    end
+    {Serial.println("bye");}
+end
