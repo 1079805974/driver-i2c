@@ -4,6 +4,10 @@ emit I2C(on);
 loop do
     emit I2C_REQUEST_RECEIVE(4,3);
     await I2C_REQUEST_DONE;
-    //await 1s;
-    //{s(4);}
+    var u8 i;
+    loop i in [1-> $twi_receive_buffer as u8] do
+        _Serial.println(twi_receive_buffer[i-1]);
+    end
+    _Serial.println("bye");
+    {delay(1000);}
 end
