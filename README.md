@@ -88,3 +88,4 @@ await I2C_REQUEST_DONE; // await completion of transfer
 
 - The maximum buffer length for both send and receive is 20 bytes
 - Do not use address of 0 for a slave as the parameter 0 is to address master from the slave.
+- await I2C_REQUEST_DONE returns the number of bytes transmitted and the errorcode

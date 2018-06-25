@@ -175,8 +175,7 @@ spawn async/isr [_TWI_vect] do
                         if(RXBuffIndex!=RXBuffLen)
                             TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE)|(1<<TWEA);
                         else{
-                            @done=1;
-                            TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWSTO) | (1<<TWIE);
+                            TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE);
                         }
                     }
                 }
@@ -263,10 +262,14 @@ spawn async/isr [_TWI_vect] do
     
     if done then
         if outer.requestmode != -1 then
-            if outer.requestmode == 1 then
-                emit I2C_REQUEST_DONE({TXBuffLen},outer.errorcode);
+            if outer.requestmode == 0 then
+                emit I2C_REQUEST_DONE({TXBuffIndex},outer.errorcode);
             else
-                emit I2C_REQUEST_DONE({RXBuffLen},outer.errorcode);
+                emit I2C_REQUEST_DONE(($outer.twi_receive_buffer) as u8,outer.errorcode);
+                {
+                    RXBuffIndex=0;
+                    RXBuffLen=0;
+                }
             end
         else
             emit I2C_REQUEST_DONE(0,outer.errorcode);
