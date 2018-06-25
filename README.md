@@ -8,14 +8,14 @@ The I2C driver can be used to communicate between devices via I2C. The API for t
 - Include the driver after clonoing this repository in libraries with #include "i2c.ceu".
 - emit the I2C to on to begin the Two Wire Interface.
 
-'''
+```
 emit I2C(on);
-'''
+```
 - Set address of the device by emitting I2C_SET_ADDRESS to the desired address.
 
-'''
+```
 emit I2C_SET_ADDRESS(address);
-'''
+```
 
 ### master sender
 
@@ -24,11 +24,11 @@ emit I2C_SET_ADDRESS(address);
 - We can await the completion of the transfer with the input I2C_REQUEST_DONE.
 - Following is an example of master send.
 
-'''
+```
 twi_transmit_buffer = [1,2,3,4,5]; // transmit buffer contains values to transfer and is of size 5
 emit I2C_REQUEST_SEND(4); // send the data to the slave with address 4
 await I2C_REQUEST_DONE; // await for the request to be completed
-'''
+```
 
 - Refer master_sender01.ceu for example.
 
@@ -40,10 +40,10 @@ await I2C_REQUEST_DONE; // await for the request to be completed
 - We can await the completion of the transfer with the input I2C_REQUEST_DONE.
 - Following is an example of master receive.
 
-'''
+```
 emit I2C_REQUEST_RECEIVE(4,2); // request 2 bytes data from the slave with address 4
 await I2C_REQUEST_DONE; // await for the request to be completed
-'''
+```
 
 - The received data is then stored in the vector twi_receive_buffer which can be accessed for the data.
 - refer master_receiver01.ceu for example where the data received is printed in serial monitor.
@@ -56,12 +56,12 @@ await I2C_REQUEST_DONE; // await for the request to be completed
 - We can await the completion of the transfer with the input I2C_REQUEST_DONE.
 - Following is an example of slave sender.
 
-'''
+```
 await I2C_REQUEST_ADDRESSED; // await for master to address the slave
 twi_transmit_buffer = [4,5,6,7]; // transmit buffer contains values to transfer and is of size 4
 emit I2C_REQUEST_SEND(0); // send the data to master
 await I2C_REQUEST_DONE; // await for the request to be completed
-'''
+```
 
 - Refer slave_sender01.ceu for example.
 
@@ -74,11 +74,11 @@ await I2C_REQUEST_DONE; // await for the request to be completed
 - We can await the completion of the transfer with the input I2C_REQUEST_DONE.
 - Following is an example of slave receive.
 
-'''
+```
 await I2C_REQUEST_ADDRESSED; // await for master to address the slave
 emit I2C_REQUEST_RECEIVE(0,8); // request 8 bytes from master
 await I2C_REQUEST_DONE; // await completion of transfer
-'''
+```
 
 - The received data is then stored in the vector twi_receive_buffer which can be accessed for the data.
 - refer slave_receiver01.ceu for example where the data received is printed in serial monitor.
