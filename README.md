@@ -17,7 +17,7 @@ emit I2C(on);
 emit I2C_SET_ADDRESS(address);
 ```
 
-### master sender
+### MASTER SENDER
 
 - Master sending data can be acheived by setting the twi_transmit_buffer and then emitting I2C_REQUEST_SEND to the desired address.
 - The twi_transmit_buffer contains the data we will send and I2C_REQUEST_SEND has a parameter of slave address.
@@ -30,10 +30,10 @@ emit I2C_REQUEST_SEND(4); // send the data to the slave with address 4
 await I2C_REQUEST_DONE; // await for the request to be completed
 ```
 
-- Refer master_sender01.ceu for example.
+- Refer [master_sender01.ceu](https://github.com/ceu-arduino/driver-i2c/blob/pre-v0.40/examples/master/master_sender01.ceu) for example.
 
 
-### master receiver
+### MASTER RECEIVER
 
 - Master receiving data can be acheived by emitting I2C_REQUEST_RECEIVE to the desired address and specifying the number of bytes.
 - The output I2C_REQUEST_RECEIVE has parameters slave address and the number of bytes requested.
@@ -46,9 +46,9 @@ await I2C_REQUEST_DONE; // await for the request to be completed
 ```
 
 - The received data is then stored in the vector twi_receive_buffer which can be accessed for the data.
-- refer master_receiver01.ceu for example where the data received is printed in serial monitor.
+- refer [master_receiver01.ceu](https://github.com/ceu-arduino/driver-i2c/blob/pre-v0.40/examples/master/master_receiver01.ceu) for example where the data received is printed in serial monitor.
 
-### slave sender
+### SLAVE SENDER
 
 - Slave requests require awaiting of the request I2C_REQUEST_ADDRESSED which returns 1 for read and 0 for write. This await is complete when the master addressed the slave with it's address.
 - Slave sending data can be acheived by setting the twi_transmit_buffer and then emitting I2C_REQUEST_SEND with parameter 0 indicating that it is a slave request.
@@ -63,7 +63,7 @@ emit I2C_REQUEST_SEND(0); // send the data to master
 await I2C_REQUEST_DONE; // await for the request to be completed
 ```
 
-- Refer slave_sender01.ceu for example.
+- Refer [slave_sender01.ceu](https://github.com/ceu-arduino/driver-i2c/blob/pre-v0.40/examples/slave/slave_sender01.ceu) for example.
 
 
 ### SLAVE RECEIVER
@@ -81,7 +81,7 @@ await I2C_REQUEST_DONE; // await completion of transfer
 ```
 
 - The received data is then stored in the vector twi_receive_buffer which can be accessed for the data.
-- refer slave_receiver01.ceu for example where the data received is printed in serial monitor.
+- refer [slave_receiver01.ceu](https://github.com/ceu-arduino/driver-i2c/blob/pre-v0.40/examples/slave/slave_receiver01.ceu) for example where the data received is printed in serial monitor.
 
 
 ## NOTES
