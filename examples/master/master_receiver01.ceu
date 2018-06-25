@@ -1,4 +1,5 @@
 #include "i2c.ceu"
+#include "wclock.ceu"
 emit I2C(on);
 {Serial.begin(9600);}
 loop do
@@ -9,5 +10,5 @@ loop do
         _Serial.println(twi_receive_buffer[i-1]);
     end
     _Serial.println("bye");
-    {delay(1000);}
+    await 1s;
 end
