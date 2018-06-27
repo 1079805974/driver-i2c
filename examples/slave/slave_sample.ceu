@@ -1,0 +1,20 @@
+#include "i2c.ceu"
+emit I2C_SET_ADDRESS(4);
+emit I2C(on); // begin I2C
+_Serial.begin(9600);
+loop do
+    var u8 x = await I2C_REQUEST_ADDRESSED;
+    _Serial.print("x");_Serial.println(x);
+    if x == 0 then
+        twi_transmit_buffer = [4,5,6,7]; // transmit buffer contains values to transfer
+        emit I2C_REQUEST_SEND(0); // send the data to master
+        await I2C_REQUEST_DONE; // await for the request to be completed
+    else
+        emit I2C_REQUEST_RECEIVE(0,8);
+        await I2C_REQUEST_DONE;
+        var u8 i;
+        loop i in [1-> $twi_receive_buffer as u8] do
+            _Serial.println(twi_receive_buffer[i-1]);
+        end
+    end
+end

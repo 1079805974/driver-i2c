@@ -1,7 +1,8 @@
 #include "i2c.ceu"
+#include "wclock.ceu"
 emit I2C(on); // begin I2C
 loop do
-    twi_transmit_buffer = [9,86,97,87,6]; // transmit buffer contains values to transfer
+    twi_transmit_buffer = [0,1,2,3,4]; // transmit buffer contains values to transfer. We are sending 5 bytes
     emit I2C_REQUEST_SEND(4); // send the data to slave with address 4
     await I2C_REQUEST_DONE; // await for the request to be completed
     await 1s; // send data every 1s
