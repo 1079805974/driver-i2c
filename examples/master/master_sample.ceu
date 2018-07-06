@@ -1,14 +1,14 @@
 #include "i2c.ceu"
 #include "wclock.ceu"
-emit I2C(on); // begin I2C
+emit I2C(on,_); // begin I2C
 _Serial.begin(9600);
 loop do
     
     twi_transmit_buffer = [0,1,2,3,4]; // transmit buffer contains values to transfer. We are sending 5 bytes
-    emit I2C_REQUEST_SEND(4); // send the data to slave with address 4
+    emit I2C_REQUEST_SEND(8); // send the data to slave with address 4
     await I2C_REQUEST_DONE; // await for the request to be completed
     await 15ms;
-    emit I2C_REQUEST_RECEIVE(4,3);
+    emit I2C_REQUEST_RECEIVE(8,3);
     await I2C_REQUEST_DONE;
     var u8 i;
     loop i in [1-> $twi_receive_buffer as u8] do

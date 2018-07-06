@@ -1,6 +1,5 @@
 #include "i2c.ceu"
-emit I2C_SET_ADDRESS(4);
-emit I2C(on);
+emit I2C(on,8);
 _Serial.begin(9600);
 loop do
     await I2C_REQUEST_ADDRESSED;

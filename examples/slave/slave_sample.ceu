@@ -1,6 +1,5 @@
 #include "i2c.ceu"
-emit I2C_SET_ADDRESS(4);
-emit I2C(on); // begin I2C
+emit I2C(on,8); // begin I2C
 _Serial.begin(9600);
 loop do
     var u8 x = await I2C_REQUEST_ADDRESSED;

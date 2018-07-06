@@ -1,6 +1,5 @@
 #include "i2c.ceu"
-emit I2C_SET_ADDRESS(4);
-emit I2C(on); // begin I2C
+emit I2C(on,8); // begin I2C
 loop do
     await I2C_REQUEST_ADDRESSED;
     twi_transmit_buffer = [4,5,6,7]; // transmit buffer contains values to transfer

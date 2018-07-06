@@ -1,4 +1,4 @@
-output on/off I2C;
+output (on/off,u8?) I2C;
 output (u8) I2C_REQUEST_SEND;
 output (u8,u8) I2C_REQUEST_RECEIVE;
 output (u8) I2C_SET_ADDRESS;
