@@ -5,16 +5,16 @@ This driver can be used to communicate via I2C between microcontrollers
 
 The I2C driver can be used to communicate between devices via I2C. The API for the ceu driver is as follows:
 
-- Include the driver after clonoing this repository in libraries with #include "i2c.ceu".
-- emit the I2C to on to begin the Two Wire Interface.
+- Include the driver after cloning this repository in libraries with #include "i2c.ceu".
+- emit the I2C to on to begin the Two Wire Interface. It has a second optional parameter for address which is necessary for a slave and optional for a master.
 
 ```
-emit I2C(on);
+emit I2C(on,_);
 ```
-- Set address of the device by emitting I2C_SET_ADDRESS to the desired address.
+- Set address of the device by emitting I2C with the desired address as the second parameter.
 
 ```
-emit I2C_SET_ADDRESS(address);
+emit I2C(on,8);
 ```
 
 ### MASTER SENDER

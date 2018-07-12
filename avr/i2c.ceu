@@ -7,19 +7,21 @@ The two bidirectional open drain lines named SDA (Serial Data) and SCL (Serial C
 
 The current API is as follows:
 
-output on/off I2C;// emit I2C to start or stop
-output (u8) I2C_REQUEST_SEND;// emit request to send 
-output (u8, u8) I2C_REQUEST_RECEIVE;// emit request to receive
-input (u8,u8) I2C_REQUEST_DONE;// await the status of the request
+output (on/off,u8?) I2C; // emit I2C to start or stop
+output (u8) I2C_REQUEST_SEND; // emit request to send 
+output (u8, u8) I2C_REQUEST_RECEIVE; // emit request to receive
+input (u8,u8) I2C_REQUEST_DONE; // await the status of the request
+input int I2C_REQUEST_ADDRESSED; // await the status of the request
 
-
-Example : samples/    // to be filled later
+Example : examples/master/master_receiver01.ceu (To be run with a slave (can use examples/slave/slave_sender01.ceu) )
 
 Errorcodes :
   No error                 0
   Interrupt not triggered  1
   NACK received            2
   Other Errors             3
+
+Refer README.md for more on how to use the I2C communication.
 */
 #include "../i2c.ceu"
 
