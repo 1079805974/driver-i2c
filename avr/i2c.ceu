@@ -35,7 +35,7 @@ var[BUF_MAX] byte rx_buf;// max buffer length = 20
 
 native/pre do
     ##include <compat/twi.h>
-    #include "print_status.h"
+    //#include "print_status.h"
 
     enum {
         TWI_ERR_NONE = 0,
@@ -47,7 +47,7 @@ native/pre do
     enum {
         TWI_MODE_NONE  = -1,
         TWI_MODE_WRITE =  0,
-        TWI_MODE_READ  =  1
+        TWI_MODE_READ  =  1,
     };
 end
 
@@ -86,28 +86,20 @@ output (u8 address) I2C_REQUEST_SEND do
     else
         outer.mode = {TWI_MODE_WRITE};
         {
-            if (@($outer.tx_buf) > 0) {// must check if this is required
-                TWDR = @(outer.tx_buf[0]);
-                TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN)|(1<<TWIE); // send ack
-            }
-            else
-                TWCR = (1<<TWINT)|(1<<TWEN)|(1<<TWIE); // send nack
+            TWDR = @(outer.tx_buf[0]);
+            TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN)|(1<<TWIE); // send ack
         }
-
     end
 end
 
 output (u8 address) I2C_REQUEST_RECEIVE do
+    outer.rx_buf = [];
+    outer.mode = {TWI_MODE_READ}; // read mode
     if address > 0 then
-        // set mode as TW_READ (1) and send start signal
-        outer.mode = {TWI_MODE_READ};// read mode
-        outer.rx_buf = [];
-        
+        // set mode as TW_READ (1) and send start signal        
         outer.addr = address;
         {TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN)|(1<<TWIE)|(1<<TWEA);}// start condition
     else
-        outer.rx_buf = [];
-        outer.mode = {TWI_MODE_READ};
         {TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN)|(1<<TWIE);} // send ack
     end
 end
@@ -122,11 +114,11 @@ spawn async/isr [_TWI_vect] do
     var bool txed = false;
     var bool rxed = false;
     {
-        print_stat(TW_STATUS);
+        //print_stat(TW_STATUS);
         switch(TW_STATUS){
             case TW_START:
             case TW_REP_START:
-                @(errorcode) = 0;
+                @(errorcode) = TWI_ERR_NONE;
                 if(@(outer.mode)!=TWI_MODE_NONE){
                     TWDR = (@outer.addr << 1) | @(outer.mode); // SLA + Read/Write (Write in this case)
                     TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA); // Continue Transfer
@@ -145,7 +137,7 @@ spawn async/isr [_TWI_vect] do
                 break;
             case TW_MT_SLA_NACK:
             case TW_MT_DATA_NACK:
-                @errorcode=2;// in case of slave not connected or receiving NACK from slave or requesting more data from the slave than the amount sent
+                @errorcode = TWI_ERR_NACK;// in case of slave not connected or receiving NACK from slave or requesting more data from the slave than the amount sent
                 break;
             case TW_MR_SLA_ACK:
                 TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA);
@@ -159,7 +151,7 @@ spawn async/isr [_TWI_vect] do
             case TW_MR_DATA_NACK:
                 break;// transfer done
             case TW_MR_SLA_NACK:
-                @errorcode=2; // in case of slave not connected or receiving NACK from slave
+                @errorcode = TWI_ERR_NACK; // in case of slave not connected or receiving NACK from slave
                 break;
 
             case TW_ST_SLA_ACK:
@@ -205,8 +197,7 @@ spawn async/isr [_TWI_vect] do
             case TW_SR_GCALL_DATA_NACK:
                 break;
             default:
-                @errorcode=3;
-                @done=1;
+                @errorcode = TWI_ERR_BUS;
         }
     }
     
