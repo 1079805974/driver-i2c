@@ -1,5 +1,11 @@
-output (on/off,u8?) I2C;
-output (u8) I2C_REQUEST_SEND;
-output (u8) I2C_REQUEST_RECEIVE;
+output (on/off,u8?) I2C; // on/off of I2C with optional variable address
+
+// master:
+output u8 I2C_REQUEST_SEND;
+output (u8,u8) I2C_REQUEST_RECEIVE;
 input  (u8,u8) I2C_REQUEST_DONE;
+
+//slave:
 input int I2C_REQUEST_ADDRESSED;
+output none I2C_SEND;
+output none I2C_RECEIVE;
