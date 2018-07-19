@@ -3,9 +3,16 @@ output (on/off,u8?) I2C; // on/off of I2C with optional variable address
 // master:
 output u8 I2C_REQUEST_SEND;
 output (u8,u8) I2C_REQUEST_RECEIVE;
-input  (u8,u8) I2C_REQUEST_DONE;
 
 //slave:
-input int I2C_REQUEST_ADDRESSED;
 output none I2C_SEND;
 output none I2C_RECEIVE;
+input int I2C_REQUEST_ADDRESSED;
+
+//input to await the completion of transfer
+input  (u8,u8) I2C_REQUEST_DONE;
+
+// buffers:
+#define BUF_MAX 20 // maximum buffer length
+var[BUF_MAX*] byte tx_buf;// transmit buffer
+var[BUF_MAX] byte rx_buf;// receive buffer

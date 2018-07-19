@@ -30,9 +30,6 @@ var u8 tx_buf_len = _;
 var u8 rx_buf_len = _;
 
 var int mode = {TWI_MODE_NONE};// 0 for Write and 1 for Read
-#define BUF_MAX 20 // Transmit buffer length
-var[BUF_MAX*] byte tx_buf;// max buffer length = 20
-var[BUF_MAX] byte rx_buf;// max buffer length = 20
 
 native/pre do
     ##include <compat/twi.h>
@@ -99,6 +96,7 @@ output none I2C_SEND do
         TWDR = @(outer.tx_buf[0]); // send the first byte of data
         TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN)|(1<<TWIE); // send ack and continue transfer
     }
+    $outer.tx_buf = $outer.tx_buf - 1;
 end
 
 output (u8 address, u8 n_bytes) I2C_REQUEST_RECEIVE do
@@ -126,7 +124,7 @@ spawn async/isr [_TWI_vect] do
     var bool txed = false;
     var bool rxed = false;
     {
-        print_stat(TW_STATUS); // uncomment to print the status
+        //print_stat(TW_STATUS); // uncomment to print the status
         switch(TW_STATUS){
             case TW_START:
             case TW_REP_START:
