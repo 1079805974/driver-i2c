@@ -1,18 +1,18 @@
 output (on/off,u8?) I2C; // on/off of I2C with optional variable address
 
 // master:
-output u8 I2C_REQUEST_SEND;
-output (u8,u8) I2C_REQUEST_RECEIVE;
+output u8 I2C_REQUEST_SEND; // master requests to send size of tx_buf number of bytes to slave with the address mentioned in the parameter
+output (u8,u8) I2C_REQUEST_RECEIVE; // master requests certain amount of data from slave with address equal to the second parameter.
 
 //slave:
-output none I2C_SEND;
-output none I2C_RECEIVE;
-input int I2C_REQUEST_ADDRESSED;
-
-//input to await the completion of transfer
-input  (u8,u8) I2C_REQUEST_DONE;
+input int I2C_REQUEST_ADDRESSED; // emitted when the master addresses this device with a request. The value returned is the mode's code.
+output none I2C_SEND; // emit this output to send data that's in the tx_buf
+output none I2C_RECEIVE; //emit this output to receive data into the rx_buf
 
 // buffers:
 #define BUF_MAX 20 // maximum buffer length
 var[BUF_MAX*] byte tx_buf;// transmit buffer
 var[BUF_MAX] byte rx_buf;// receive buffer
+
+//input to await the completion of transfer
+input  (u8,u8) I2C_REQUEST_DONE; // this input is emitted once the transfer of data is complete. The values returned are number of bytes and errorcode respectively.
