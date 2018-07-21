@@ -92,8 +92,8 @@ await I2C_DONE;                           // await for the request to be complet
 - Following is an example of master receive.
 
 ```
-emit I2C_MASTER_RECEIVE(4,2); // request 2 bytes data from the slave with address 4
-await I2C_DONE; // await for the request to be completed
+emit I2C_MASTER_RECEIVE(4,2);             // request 2 bytes data from the slave with address 4
+await I2C_DONE;                           // await for the request to be completed
 ```
 
 - The received data is then stored in the vector rx_buf which can be accessed for the data.
@@ -101,17 +101,17 @@ await I2C_DONE; // await for the request to be completed
 
 ### SLAVE SENDER
 
-- Slave requests require awaiting of the request I2C_SLAVE_SEND_ACKED which returns 3 for read and 2 for write. The enums defined for them are TWI_MODE_READ_SLAVE and TWI_MODE_WRITE_SLAVE respectively.. This await is complete when the master addressed the slave with it's address.
+- Slave sender requires awaiting I2C_SLAVE_SEND_ACKED which. This await is complete when the master addresses the slave with it's address requesting for data.
 - Slave sending data can be acheived by setting the tx_buf and then emitting I2C_SEND.
 - The tx_buf contains the data we will send.
 - We can await the completion of the transfer with the input I2C_DONE.
 - Following is an example of slave sender.
 
 ```
-await I2C_SLAVE_SEND_ACKED; // await for master to address the slave
-tx_buf = [4,5,6,7]; // transmit buffer contains values to transfer and is of size 4
-emit I2C_SEND(); // send the data to master
-await I2C_DONE; // await for the request to be completed
+await I2C_SLAVE_SEND_ACKED;               // await for master to address the slave
+tx_buf = [4,5,6,7];                       // transmit buffer contains values to transfer and is of size 4
+emit I2C_SLAVE_SEND();                    // send the data to master
+await I2C_DONE;                           // await for the request to be completed
 ```
 
 - Refer [slave_sender01.ceu](https://github.com/ceu-arduino/driver-i2c/blob/pre-v0.40/examples/slave/slave_sender01.ceu) for example.
@@ -119,14 +119,11 @@ await I2C_DONE; // await for the request to be completed
 
 ### SLAVE RECEIVER
 
-- Slave requests require awaiting of the request I2C_SLAVE_SEND_ACKED which returns 3 for read and 2 for write. The enums defined for them are TWI_MODE_READ_SLAVE and TWI_MODE_WRITE_SLAVE respectively. This await is complete when the master addressed the slave with it's address.
-- Slave receiving data can be acheived by emitting I2C_RECEIVE.
-- The output I2C_RECEIVE has no parameters.
-- We can await the completion of the transfer with the input I2C_DONE.
+- Slave receiving data can be acheived by awaiting I2C_SLAVE_RECEIVE.
 - Following is an example of slave receive.
 
 ```
-await I2C_SLAVE_RECEIVE();
+await I2C_SLAVE_RECEIVE;
 ```
 
 - The received data is then stored in the vector rx_buf which can be accessed for the data.
@@ -141,13 +138,128 @@ await I2C_SLAVE_RECEIVE();
     - The master sends data using the following syntax :
 
     ```
-    Wire.beginTransmission(8); // transmit to device #8
-    Wire.write(7);              // sends one byte with value 7
-    Wire.endTransmission();    // stop transmitting
+    Wire.beginTransmission(8);            // transmit to device #8
+    Wire.write(7);                        // sends one byte with value 7
+    Wire.write(5);                        // sends another byte with value 5
+    Wire.endTransmission();               // stop transmitting
     ```
-
-    The ISR 
-
+    - beginTransmission() : This function is used to begin the transmission to the slave of the address given in the parameter.
+    - write() : This function is used to add data into the buffer to send to the slave.
+    - endTransmission() : This function terminates the writing and starts to transfer the data in the buffer to the slave.
 
 - The Céu API
-    - The master sends data using the following syntax
+    - The master sends data using the following syntax :
+
+    ```
+    tx_buf = [7,5];                       // transmit buffer contains values to transfer. We are sending 2 bytes
+    emit I2C_MASTER_SEND(8);              // send the data to slave with address 8
+    await I2C_DONE;                       // await for the request to be completed
+    ```
+    - tx_buf stores the data required to send to the slave.
+    - I2C_MASTER_SEND when emitted starts the transfer and sends the data to the slave.
+    - I2C_DONE is awoken after the trasmission is over.
+
+### Master Receiver
+
+- The Arduino API
+    - The master receives data using the following syntax :
+
+    ```
+    Wire.requestFrom(8, 6);               // request 6 bytes from slave device #8
+
+    while (Wire.available()) {            // slave may send less than requested
+        char c = Wire.read();             // receive a byte as character
+        Serial.print(c);                  // print the character
+    }
+    ```
+    - requestFrom() : This function requests data from the slave.
+    - available() : This function returns the number of bytes available in the buffer to be read.
+    - read() : This function reads data received from the buffer.
+
+- The Céu API
+    - The master receives data using the following syntax :
+
+    ```
+    emit I2C_MASTER_RECEIVE(8,6);         // request 6 bytes from slave device #8
+    await I2C_DONE;                       // await completion of transfer
+    var u8 i;
+    loop i in [1-> $rx_buf as u8] do
+        _Serial.println(rx_buf[i-1]);     // print the data received
+    end
+    ```
+    - I2C_MASTER_RECEIVE when emitted requests the slave to send data.
+    - I2C_DONE is awoken after the trasmission is over.
+    - The data received is stored in the rx_buf.
+
+### Slave Sender
+
+- The Arduino API
+    - The slave sends data using the following syntax :
+
+    ```
+    void setup() {
+        Wire.begin(8);                    // join i2c bus with address #8
+        Wire.onRequest(requestEvent);     // register event
+    }
+
+    // function that executes whenever data is requested by master
+    // this function is registered as an event, see setup()
+    void requestEvent() {
+        Wire.write("hello ");             // respond with message of 6 bytes
+    }
+    ```
+    - onRequest() : This function sets the function that is passed as the parameter to be the function that executes when Master requests data from it.
+    - write() : This function is used to add data into the buffer to send to the slave.
+    - requestEvent() : This function is user defined and is set to execute when the master requests data from it. It needs to be set to do so by calling 'onRequest(requestEvent);'.
+
+- The Céu API
+    - The slave sends data using the following syntax :
+
+    ```
+    await I2C_SLAVE_SEND_ACKED;           // await the master to address the slave with a request for data
+    tx_buf = [4,5,6,7];                   // transmit buffer contains values to transfer
+    emit I2C_SLAVE_SEND();                // send the data to master
+    await I2C_DONE;                       // await for the send to be completed
+    ```
+    - The input I2C_SLAVE_SEND_ACKED is awoken when the master addresses the slave to send data.
+    - tx_buf stores the data required to send to the slave.
+    - I2C_SLAVE_SEND when emitted sends an ACK and sends the data to the slave.
+    - I2C_DONE is awoken after the trasmission is over.
+
+### Slave Receiver
+
+- The Arduino API
+    - The Slave receives data using the following syntax :
+
+    ```
+    void setup() {
+        Wire.begin(8);                    // join i2c bus with address #8
+        Wire.onReceive(receiveEvent);     // register event
+    }
+
+    // function that executes whenever data is received from master
+    // this function is registered as an event, see setup()
+    void receiveEvent(int howMany) {
+        while (Wire.available()) {
+            char c = Wire.read();         // receive byte as a character
+            Serial.print(c);              // print the character
+        }
+    }
+    ```
+    - onReceive() : This function sets the function that is passed as the parameter to be the function that executes when Master send data to it.
+    - available() : This function returns the number of bytes available in the buffer to be read.
+    - read() : This function reads data received from the buffer.
+    - receiveEvent() : This function is user defined and is set to execute when the master sends data to it. It needs to be set to do so by calling 'onReceive(receiveEvent);'.
+
+- The Céu API
+    - The slave receives data using the following syntax :
+
+    ```
+    await I2C_SLAVE_RECEIVE;              // await for the Slave receive to be completed
+    var u8 i;
+    loop i in [1-> $rx_buf as u8] do
+        _Serial.println(rx_buf[i-1]);     // print the data to serial
+    end
+    ```
+    - The input I2C_SLAVE_RECEIVE is awoken when slave receives data from the master.
+    - The data received is stored in the rx_buf.
