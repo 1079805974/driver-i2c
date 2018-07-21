@@ -3,9 +3,7 @@
 emit I2C(on,8);
 _Serial.begin(9600);
 loop do
-    await I2C_REQUEST_ADDRESSED;
-    emit I2C_RECEIVE();
-    await I2C_REQUEST_DONE;
+    await I2C_SLAVE_RECEIVE;
     var u8 i;
     loop i in [1-> $rx_buf as u8] do
         _Serial.println(rx_buf[i-1]);
