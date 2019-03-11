@@ -17,19 +17,22 @@
  *  Other Errors             3
  *
  *  Refer README.md for more on how to use the I2C communication and the comparison with the Arduino API.
-*/
+    */
+
 #include "../i2c.ceu"
 
 var u8  addr = _;
 var u8 tx_buf_len = _;
 var u8 rx_buf_len = _;
-
+var u8 twi_state = _;
+var bool twi_sendStop = _;
+var bool twi_inRepStart = _;
 var int mode = {TWI_MODE_NONE};// 0 for Write and 1 for Read
 
 native/pre do
     ##include <compat/twi.h>
-    //#include "print_status.h"   // include for printing the status
-
+    #include "print_status.h"   // include for printing the status
+    
     enum {
         TWI_ERR_NONE = 0,
         TWI_ERR_NACK = 1,
@@ -44,13 +47,15 @@ native/pre do
         TWI_MODE_WRITE_SLAVE =  2,
         TWI_MODE_READ_SLAVE  =  3,
     };
+
 end
 
 native
-    _TWI_vect,
+    _TWI_vect
 ;   
 
 output (on/off v, u8? address) I2C do
+    outer.twi_inRepStart = false;
     if address? then
         {TWAR = @(address!) << 1;}
     end
@@ -90,7 +95,7 @@ output none I2C_SLAVE_SEND do
     $outer.tx_buf = $outer.tx_buf - 1;
 end
 
-output (u8 address, u8 n_bytes) I2C_MASTER_RECEIVE do
+output (u8 address, u8 b n_bytes) I2C_MASTER_RECEIVE do
     outer.rx_buf_len = n_bytes;
     // done in the ISR : outer.rx_buf = []; // clear the receive buffer
     outer.mode = {TWI_MODE_READ_MASTER}; // read mode    
@@ -103,38 +108,73 @@ end
 spawn async/isr [_TWI_vect] do
 
     var u8 errorcode = 1;
-    var bool done = true;
+    var bool done = false;
     var bool slave_send_ack = false;
     var int value = -1;
 
     var bool txed = false;
     var bool rxed = false;
+
     {
-        //print_stat(TW_STATUS); // uncomment to print the status
+        print_stat(TW_STATUS); // uncomment to print the status
         switch(TW_STATUS){
             case TW_START:
             case TW_REP_START:
                 @(errorcode) = TWI_ERR_NONE;
-                if(@(outer.mode)!=TWI_MODE_NONE){
+                if(@outer.mode!=TWI_MODE_NONE){
                     TWDR = (@outer.addr << 1) | (@(outer.mode) & 1); // SLA + Read/Write (Write in this case)
                     TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA); // Continue Transfer
                     @done = 0;
                 }
-                break;
-        
+                
+            break;
             case TW_MT_SLA_ACK:
             case TW_MT_DATA_ACK:
                 if (@($outer.tx_buf) > 0) {
                     TWDR = @(outer.tx_buf[0]);
-                    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE);
+                    TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWINT) | _BV(TWEA);
                     @txed = 1;
                     @done = 0;
+                }else{
+                    @done = 1;
                 }
+
                 break;
             case TW_MT_SLA_NACK:
-            case TW_MT_DATA_NACK:
-                @errorcode = TWI_ERR_NACK;// in case of slave not connected or receiving NACK from slave or requesting more data from the slave than the amount sent
+                @done = 1;
+                TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWEA) | _BV(TWINT) | _BV(TWSTO);
+                while(TWCR & _BV(TWSTO)){
+                    continue;
+                }
+                //@outer.mode = TWI_MODE_NONE;
                 break;
+            case TW_MT_DATA_NACK:
+                @errorcode = TWI_ERR_NACK;
+                @done = 1;
+                TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWEA) | _BV(TWINT) | _BV(TWSTO);
+                while(TWCR & _BV(TWSTO)){
+                    continue;
+                }
+                @outer.mode = TWI_MODE_NONE;
+                break;
+            case TW_MT_ARB_LOST: // lost bus arbitration
+                @errorcode = TW_MT_ARB_LOST;
+                TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWEA) | _BV(TWINT);
+                //@outer.mode = TWI_MODE_NONE;
+                break;
+            // case TW_MR_DATA_ACK:
+            //     @value = TWDR;
+            //     @done = 0;
+            // case TW_MR_SLA_ACK:
+            //     if (@($outer.rx_buf) < @outer.rx_buf_len) {
+            //         TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA); // send ack
+            //         @done = 0;
+            //     }else{
+            //         TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWINT);
+            //         @rxed  = 1;
+            //         @done = 1;
+            //     }
+            // break;
             case TW_MR_SLA_ACK:
                 TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA); // send ack
                 @rxed = 1;
@@ -142,14 +182,67 @@ spawn async/isr [_TWI_vect] do
                 break;
             case TW_MR_DATA_ACK:
                 if(@outer.rx_buf_len--){
-                    @(value) = TWDR;
+                    @value = TWDR;
                     @done = 0;
                     TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA); // send ack
                 }
                 break;
             case TW_MR_DATA_NACK:
+                @value = TWDR;
+                if (@outer.twi_sendStop){
+                    @done = 1;
+                    TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWEA) | _BV(TWINT) | _BV(TWSTO);
+                    while(TWCR & _BV(TWSTO)){
+                        continue;
+                    }
+                    //@outer.mode = TWI_MODE_NONE;
+                }else {
+                    @outer.twi_inRepStart = true;	// we're gonna send the START
+                    // don't enable the interrupt. We'll generate the start, but we 
+                    // avoid handling the interrupt until we're in the next transaction,
+                    // at the point where we would normally issue the start.
+                    TWCR = _BV(TWINT) | _BV(TWSTA)| _BV(TWEN) ;
+                    //@outer.mode = TWI_MODE_NONE;
+                }    
+            break;
             case TW_MR_SLA_NACK:
-                @errorcode = TWI_ERR_NACK; // in case of slave not connected or receiving NACK from slave
+                @errorcode = TWI_ERR_NACK; 
+                @done = 1;
+                TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWEA) | _BV(TWINT) | _BV(TWSTO);
+                while(TWCR & _BV(TWSTO)){
+                    continue;
+                }
+                //@outer.mode = TWI_MODE_NONE;
+                // in case of slave not connected or receiving NACK from slave
+                break;
+
+            case TW_SR_SLA_ACK:
+            case TW_SR_GCALL_ACK:
+            case TW_SR_ARB_LOST_SLA_ACK: 
+            case TW_SR_ARB_LOST_GCALL_ACK:
+                @rxed =  1;
+                @outer.mode = TWI_MODE_READ_SLAVE;
+                @done = 0;
+                TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN)|(1<<TWIE);
+                break;
+            case TW_SR_DATA_ACK:       // data received, returned ack
+            case TW_SR_GCALL_DATA_ACK:
+                if(@($outer.rx_buf) < 20){
+                    @value = TWDR;
+                    @done = 0;
+                    TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1 << TWEA);
+                }else{
+                    TWCR = _BV(TWINT) | _BV(TWSTA)| _BV(TWEN) ;
+                }
+                break;
+            case TW_SR_STOP:
+                @done = 1;
+                break;
+            case TW_SR_DATA_NACK:
+            case TW_SR_GCALL_DATA_NACK:
+                TWCR = _BV(TWINT) | _BV(TWSTA)| _BV(TWEN) ;
+                @errorcode = TWI_ERR_NACK;
+                @done = 1;
                 break;
 
             case TW_ST_SLA_ACK:
@@ -176,34 +269,14 @@ spawn async/isr [_TWI_vect] do
                 break;
             case TW_ST_DATA_NACK:
             case TW_ST_LAST_DATA:
-                break;
-
-            case TW_SR_SLA_ACK:
-            case TW_SR_GCALL_ACK:
-            case TW_SR_ARB_LOST_SLA_ACK: 
-            case TW_SR_ARB_LOST_GCALL_ACK:
-                @rxed =  1;
-                @outer.mode = TWI_MODE_READ_SLAVE;
-                @done = 0;
-                TWCR = (1<<TWINT)|(1<<TWEA)|(1<<TWEN)|(1<<TWIE);
-                break;
-            case TW_SR_DATA_ACK:       // data received, returned ack
-            case TW_SR_GCALL_DATA_ACK:
-                @value = TWDR;
-                @done=0;
-                TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1 << TWEA);
-                break;
-            case TW_SR_STOP:
-                break;
-            case TW_SR_DATA_NACK:
-            case TW_SR_GCALL_DATA_NACK:
-                @errorcode = TWI_ERR_NACK;
+                TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA);
                 break;
             default:
                 @errorcode = TWI_ERR_BUS;
+                @done = 1;
         }
     }
-    
+
     if txed then
         $outer.tx_buf = $outer.tx_buf - 1;
     end
@@ -224,21 +297,30 @@ spawn async/isr [_TWI_vect] do
     if done then
         if outer.mode != {TWI_MODE_NONE} then
             if outer.mode == {TWI_MODE_WRITE_SLAVE} or outer.mode == {TWI_MODE_WRITE_MASTER} then
-                emit I2C_DONE((outer.tx_buf_len - ($outer.tx_buf as u8)),errorcode);
+                outer.len = outer.tx_buf_len - ($outer.tx_buf as u8);
+                outer.twi_error = errorcode;
+                emit I2C_DONE;
                 outer.tx_buf = [];
             else
                 if outer.mode == {TWI_MODE_READ_MASTER} then
-                    emit I2C_DONE(($outer.rx_buf) as u8,errorcode);
+                    _delay(20);         //I don't know why, but it take affect.
+                    outer.len = ($outer.rx_buf) as u8;
+                    outer.twi_error = errorcode;
+                    emit I2C_DONE;
                 else
-                    emit I2C_SLAVE_RECEIVE(($outer.rx_buf) as u8,errorcode);
+                    outer.len = ($outer.rx_buf) as u8;
+                    outer.twi_error = errorcode;
+                    emit I2C_SLAVE_RECEIVE;
                 end
             end
         else
-            emit I2C_DONE(0,errorcode);
+            outer.len = 0;
+            outer.twi_error = errorcode;
+            emit I2C_DONE;
         end
         
         if outer.mode & 2 == 0 then // if master
-            {TWCR = (1<<TWINT)|(1<<TWEN)| (1<<TWSTO) | (1<<TWIE) | (1<<TWEA);} // send stop
+            {TWCR = (1<<TWINT)|(1<<TWEN)| (1<<TWSTO) | (1<<TWIE) | (1<<TWEA);} // send 
         else
             {TWCR = (1<<TWINT) | (1<<TWEN) | (1<<TWIE) | (1<<TWEA);} // send ACK and wait for master to address slave
         end
@@ -247,3 +329,59 @@ spawn async/isr [_TWI_vect] do
     end
 
 end
+
+code/await I2C_Master_Send (var u8 address) -> none 
+do
+    if ($outer.tx_buf as u8) > 0 then
+        outer.tx_buf_len = $outer.tx_buf as u8; // set tx_buf_len to buffer length
+
+        outer.addr = address; // set the slave address    
+        
+        {
+            while(@outer.mode != TWI_MODE_NONE);
+            @outer.mode = TWI_MODE_WRITE_MASTER;
+            @outer.twi_sendStop = false;
+            if(@outer.twi_inRepStart){
+                @outer.twi_inRepStart = false;			// remember, we're dealing with an ASYNC ISR
+                do {
+                    TWDR = (@outer.addr << 1) | (@(outer.mode) & 1);			
+                } while(TWCR & _BV(TWWC));
+                TWCR = _BV(TWINT) | _BV(TWEA) | _BV(TWEN) | _BV(TWIE);
+            }else{
+                TWCR = (1<<TWINT)|(1<<TWSTA)|(1<<TWEN)|(1<<TWIE)|(1<<TWEA);
+            }
+        }
+    //await I2C_DONE;
+    end
+end
+
+
+code/await I2C_Master_Receive (var u8 address, var u8 n_bytes) -> none 
+do
+    outer.rx_buf_len = n_bytes;
+    // done in the ISR : outer.rx_buf = []; // clear the receive buffer
+    
+    outer.mode = {TWI_MODE_READ_MASTER}; // read mode    
+    outer.addr = address; // set the slave address
+
+    {
+        if (@outer.twi_inRepStart == true) {
+            @outer.twi_inRepStart = false;			// remember, we're dealing with an ASYNC ISR
+            do {
+                TWDR = (@outer.addr << 1) | (@(outer.mode) & 1);			
+            } while(TWCR & _BV(TWWC));
+            TWCR = _BV(TWINT) | _BV(TWEA) | _BV(TWEN) | _BV(TWIE);	// enable INTs, but not START
+        }
+        else{
+            TWCR = _BV(TWEN) | _BV(TWIE) | _BV(TWEA) | _BV(TWINT) | _BV(TWSTA);
+        }
+    }
+    _delay(1000); //???
+    //await I2C_DONE;
+end
+
+code/await I2C_Slave_Recieve (none) -> none
+do
+    
+end
+
